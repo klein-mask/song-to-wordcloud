@@ -6,6 +6,13 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+bs4 = "*"
+requests = "*"
+django = "*"
+pandas = "*"
+lxml = "*"
+janome = "*"
+wordcloud = "*"
 
 [requires]
 python_version = "3.7"
