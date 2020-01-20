@@ -1,17 +1,21 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-import time
 import sys
 from janome.tokenizer import Tokenizer
-import re
+from wordcloud import WordCloud
+import numpy as np
+from PIL import Image
+
 
 class LiricsToWordCloud:
 
     def __init__(self):
-        self.lirics = ''
-        self.artist = ''
         self.song = ''
+        self.artist = ''
+        self.lirics = ''
+        self.words = ''
+        self.output_path = './output/'
     
     def get_lirics(self, *, url=''):
         error = None
@@ -25,19 +29,11 @@ class LiricsToWordCloud:
         
         try:
             self.song = soup.find(class_='prev_pad').text.replace('\n','')
-            self.lirics = soup.find('div', itemprop='lyrics').text.replace('\n','')
             self.artist = soup.find('span', itemprop='byArtist name').text.replace('\n','')
+            self.lirics = soup.find('div', itemprop='lyrics').text.replace('\n','')
 
-            print(self.song)
-            print(self.artist)
-
-
-            # create dataframe
             df = pd.DataFrame(data=[[self.song, self.artist, self.lirics]], columns=['曲名', 'アーティスト名', '歌詞'])
-
-            print(df)
-
-            df.to_csv('lirics.csv', mode = 'a', encoding='utf-8')
+            df.to_csv(self.output_path + 'lirics.csv', mode = 'w', encoding='utf-8')
         except Exception as e:
             error = e
 
@@ -60,18 +56,40 @@ class LiricsToWordCloud:
                 error = e
         
         try:
-            words = ' '.join(words)
-            with open('words.txt', 'w', encoding='utf-8') as fp:
-                fp.write(words)
+            self.words = ' '.join(words)
+            with open(self.output_path + 'words.txt', 'w', encoding='utf-8') as fp:
+                fp.write(self.words)
         except Exception as e:
             error = e
+        
+        return error
+    
+    def create_word_cloud(self, img_color_path=''):
+        font = '/System/Library/Fonts/ヒラギノ角ゴシック W1.ttc'
+
+        stop_words = ['そう', 'ない', 'いる', 'する', 'まま', 'よう', 'てる', 'なる', 'こと', 'もう', 'いい', 'ある', 'ゆく', 'れる']
+
+        wc = WordCloud( background_color='white', 
+                        font_path=font,
+                        width=800,
+                        height=600, 
+                        stopwords=set(stop_words),
+                        mask=np.array(Image.open(img_color_path)),
+                        collocations=False).generate(self.words)
+
+        wc.to_file(self.output_path + '{0}.png'.format(self.song))
 
 
 if __name__ == "__main__":
     args = sys.argv
 
-    if len(args) >= 2:
+    if len(args) >= 3:
         ltw = LiricsToWordCloud()
         error = ltw.get_lirics(url=args[1])
+
         if error is None:
-            ltw.to_words()
+            error = ltw.to_words()
+            
+            if error is None:
+                ltw.create_word_cloud(args[2])
+
