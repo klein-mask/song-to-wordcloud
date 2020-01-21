@@ -12,18 +12,33 @@ import sys
 import os
 
 
-class LiricsToWordCloud:
+class LyricsToWordCloud:
 
     def __init__(self):
         self.song = ''
         self.artist = ''
-        self.lirics = ''
+        self.lyrics = ''
         self.words = ''
         self.output_path = os.path.dirname(__file__) + '/output/'
     
-    def get_lirics(self, *, url=''):
-        error = None
-
+    def generate(self, *, url, source_image):
+        try:
+           self.get_lyrics(url=url)
+        except:
+            print('歌詞の取得に失敗しました')
+        
+        try:
+            self.to_words()
+        except:
+            print('歌詞の分割に失敗しました')
+        
+        try:
+            self.create_word_cloud(source_image=source_image)
+            print('Success!!')
+        except:
+            print('wordcloudの作成に失敗しました')
+        
+    def get_lyrics(self, *, url):
         page = requests.get(url)
 
         try:
@@ -31,49 +46,36 @@ class LiricsToWordCloud:
         except:
             soup = BeautifulSoup(page.text, "html5lib")
         
-        try:
-            self.song = soup.find(class_='prev_pad').text.replace('\n','')
-            self.artist = soup.find('span', itemprop='byArtist name').text.replace('\n','')
-            self.lirics = soup.find('div', itemprop='lyrics').text.replace('\n','')
+        self.song = soup.find(class_='prev_pad').text.replace('\n','')
+        self.artist = soup.find('span', itemprop='byArtist name').text.replace('\n','')
+        self.lyrics = soup.find('div', itemprop='lyrics').text.replace('\n','')
 
-            df = pd.DataFrame(data=[[self.song, self.artist, self.lirics]], columns=['曲名', 'アーティスト名', '歌詞'])
-            df.to_csv(self.output_path + 'lirics.csv', mode = 'w', encoding='utf-8')
-        except Exception as e:
-            error = e
+        df = pd.DataFrame(data=[[self.song, self.artist, self.lyrics]], columns=['曲名', 'アーティスト名', '歌詞'])
+        df.to_csv(self.output_path + 'lirics.csv', mode = 'w', encoding='utf-8')
 
-        return error
 
     def to_words(self):
-        error = None
-
         t = Tokenizer()
-        tokens = t.tokenize(self.lirics)
+        tokens = t.tokenize(self.lyrics)
 
         words = []
         for token in tokens:
-            try:
-                hinshi = token.part_of_speech.split(',')[0]
+            hinshi = token.part_of_speech.split(',')[0]
 
-                if hinshi in ['名詞', '形容詞', '動詞', '副詞']:
-                    words.append(token.surface)
-            except Exception as e:
-                error = e
+            if hinshi in ['名詞', '形容詞', '動詞', '副詞']:
+                words.append(token.surface)
         
-        try:
-            self.words = ' '.join(words)
-            with open(self.output_path + 'words.txt', 'w', encoding='utf-8') as fp:
-                fp.write(self.words)
-        except Exception as e:
-            error = e
-        
-        return error
-    
-    def create_word_cloud(self, img_color_path):
+        self.words = ' '.join(words)
+        with open(self.output_path + 'words.txt', 'w', encoding='utf-8') as fp:
+            fp.write(self.words)
+
+
+    def create_word_cloud(self, *, source_image):
         font = '/System/Library/Fonts/ヒラギノ角ゴシック W1.ttc'
 
         stop_words = ['それ', 'そう', 'ない', 'の', 'いる', 'する', 'まま', 'よう', 'てる', 'なる', 'こと', 'もう', 'いい', 'ある', 'ゆく', 'れる']
 
-        img_color = np.array(Image.open(img_color_path))
+        img_color = np.array(Image.open(source_image))
         wc = WordCloud( background_color='white', 
                         font_path=font,
                         width=800,
@@ -89,12 +91,6 @@ class LiricsToWordCloud:
 if __name__ == "__main__":
     args = sys.argv
 
-    if len(args) >= 2:
-        ltw = LiricsToWordCloud()
-        error = ltw.get_lirics(url=args[1])
-        if error is None:
-            error = ltw.to_words()
-            
-            if error is None:
-                ltw.create_word_cloud(args[2])
-
+    if len(args) >= 3:
+        ltw = LyricsToWordCloud()
+        error = ltw.generate(url=args[1], source_image=args[2])
