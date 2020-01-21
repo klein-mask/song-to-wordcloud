@@ -91,6 +91,6 @@ class LyricsToWordCloud:
 if __name__ == "__main__":
     args = sys.argv
 
-    if len(args) >= 2:
+    if len(args) >= 3:
         ltw = LyricsToWordCloud()
-        ltw.generate(url=args[1], source_image=args[2])
+        error = ltw.generate(url=args[1], source_image=args[2])
